@@ -13,7 +13,7 @@ window.VC_CONFIG = {
   CENTRO: [-33.2335, -60.3255],
   ZOOM: 14,
   // Perfiles que se eligen al ingresar (todos usan el mismo PIN)
-  PERFILES: ["Fabricio", "Lorenzo", "Eliana", "Agostina", "Iván", "Felipe"]
+  PERFILES: ["Fabricio", "Lorenzo", "Eliana", "Agostina", "Iván", "Felipe", "Ayelén"]
   // El PIN de edición NO va acá: se fija en Supabase con
   // select public.cambiar_pin('TU_PIN');  (ver 03_pin.sql)
 };

@@ -67,7 +67,7 @@ const ls={ get:k=>{ try{ return localStorage.getItem(k)||""; }catch(_){ return "
   set:(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(_){} } };
 const pinGuardado=()=>ls.get("vc_pin");
 const nombreEditor=()=>ls.get("vc_nombre");
-const PERFILES=(window.VC_CONFIG?.PERFILES)||["Fabricio","Lorenzo","Eliana","Agostina","Iván","Felipe"];
+const PERFILES=(window.VC_CONFIG?.PERFILES)||["Fabricio","Lorenzo","Eliana","Agostina","Iván","Felipe","Ayelén"];
 const autorActual=()=>nombreEditor()||null;
 async function setSession(pin){
   S.user=null; S.canWrite=false;

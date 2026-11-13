@@ -416,14 +416,14 @@ function abrirEdicion(id){
   const f=$("#fe");
   window.VC_onEdit?.(e, isNew);
   const nuevasFotos=new Map(); // rubro -> File[]
-  f.querySelectorAll(".rubed").forEach(syncRub);
-  f.addEventListener("segchange",ev=>{ const rb=ev.target.closest(".rubed"); if(rb) syncRub(rb); });
-  f.addEventListener("input",ev=>{ const rb=ev.target.closest(".rubed"); if(rb&&ev.target.matches("[data-iname]")) syncRub(rb); });
-  f.addEventListener("click",ev=>{ const rb=ev.target.closest(".rubed"); if(!rb) return;
+  f.querySelectorAll(".rubed[data-r]").forEach(syncRub);
+  f.addEventListener("segchange",ev=>{ const rb=ev.target.closest(".rubed[data-r]"); if(rb) syncRub(rb); });
+  f.addEventListener("input",ev=>{ const rb=ev.target.closest(".rubed[data-r]"); if(rb&&ev.target.matches("[data-iname]")) syncRub(rb); });
+  f.addEventListener("click",ev=>{ const rb=ev.target.closest(".rubed[data-r]"); if(!rb) return;
     if(ev.target.closest("[data-additem]")){ rb.querySelector("[data-items]").insertAdjacentHTML("beforeend",itemRow(rb.dataset.r)); rb.querySelector(".itemrow:last-child [data-iname]").focus(); syncRub(rb); }
     if(ev.target.closest("[data-delitem]")){ ev.target.closest(".itemrow").remove(); syncRub(rb); }
     if(ev.target.closest("[data-delfoto]")){ const th=ev.target.closest(".th"); if(th.dataset.nf!=null){ const arr=nuevasFotos.get(rb.dataset.r)||[]; arr[+th.dataset.nf]=null; } th.remove(); } });
-  f.addEventListener("change",ev=>{ if(!ev.target.matches("[data-rfile]")) return; const rb=ev.target.closest(".rubed"), k=rb.dataset.r;
+  f.addEventListener("change",ev=>{ if(!ev.target.matches("[data-rfile]")) return; const rb=ev.target.closest(".rubed[data-r]"), k=rb.dataset.r;
     const arr=nuevasFotos.get(k)||[]; nuevasFotos.set(k,arr);
     for(const fl of ev.target.files){ arr.push(fl); rb.querySelector("[data-thumbs]").insertAdjacentHTML("beforeend",`<div class="th nueva" data-nf="${arr.length-1}" style="background-image:url('${URL.createObjectURL(fl)}')"><button type="button" data-delfoto title="Quitar foto">✕</button></div>`); }
     ev.target.value=""; });
@@ -433,7 +433,7 @@ function abrirEdicion(id){
     try{ await DB.remove(id); closeModal(); closeFicha(); toast("Espacio eliminado"); reload(); }catch(err){ $("#ferr").textContent=errMsg(err); } };
   $("#feSave").onclick=async()=>{
     const nombre=f.nombre.value.trim(); if(!nombre){ $("#ferr").textContent="Falta el nombre."; return; }
-    const rubros={}; f.querySelectorAll(".rubed").forEach(rb=>{ const k=rb.dataset.r, t=segVal(rb,"tiene_"+k), est=segVal(rb,"est_"+k);
+    const rubros={}; f.querySelectorAll(".rubed[data-r]").forEach(rb=>{ const k=rb.dataset.r, t=segVal(rb,"tiene_"+k), est=segVal(rb,"est_"+k);
       const items=t==="si"?leerItems(rb):[]; const ev=itemsEval({items}); const calc=ev.length?estadoDePeso(ev.reduce((a,i)=>a+PESO[i.estado],0)/ev.length):null;
       rubros[k]={tiene:t==="si"?true:t==="no"?false:null, estado:t==="si"?(calc||est||null):null, nota:rb.querySelector("[data-nota]").value.trim(),
         items, fotos:[...rb.querySelectorAll(".th[data-path]")].map(x=>x.dataset.path)}; });

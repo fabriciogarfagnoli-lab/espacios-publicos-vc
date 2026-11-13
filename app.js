@@ -67,6 +67,7 @@ const ls={ get:k=>{ try{ return localStorage.getItem(k)||""; }catch(_){ return "
   set:(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(_){} } };
 const pinGuardado=()=>ls.get("vc_pin");
 const nombreEditor=()=>ls.get("vc_nombre");
+const PERFILES=(window.VC_CONFIG?.PERFILES)||["Fabricio","Lorenzo","Eliana","Agostina","Iván","Felipe"];
 const autorActual=()=>nombreEditor()||null;
 async function setSession(pin){
   S.user=null; S.canWrite=false;
@@ -90,16 +91,19 @@ $("#auth").addEventListener("click",ev=>{
 function abrirLogin(){
   openModal(`<div class="dh"><h3>Ingresar para editar</h3><button class="x" data-close>✕</button></div>
   <form class="db" id="lgForm" autocomplete="off">
-    <div class="fld"><label>Tu nombre</label><input type="text" id="lgNombre" placeholder="Ej.: Fabricio" value="${esc(nombreEditor())}" autocomplete="name"></div>
+    <div class="fld"><label>¿Quién sos?</label><div class="perfiles" id="lgPerfiles">${PERFILES.map(n=>`<button type="button" class="perfil${n===nombreEditor()?" on":""}" data-n="${esc(n)}"><span>${esc(n.slice(0,1))}</span>${esc(n)}</button>`).join("")}</div></div>
     <div class="fld"><label>PIN</label><input type="password" id="lgPin" autocomplete="off" style="letter-spacing:.3em"></div>
-    <div style="font-size:12.5px;color:var(--ink2)">Tu nombre queda registrado como autor de lo que cargues. El PIN se recuerda en este dispositivo hasta que toques “Salir”.</div>
+    <div style="font-size:12.5px;color:var(--ink2)">Tu perfil queda registrado como autor de lo que cargues. El PIN se recuerda en este dispositivo hasta que toques “Salir”.</div>
     <button type="submit" hidden></button>
   </form>
   <div class="df"><span class="err" id="ferr"></span><button class="btn" data-close>Cancelar</button><button class="btn pri" id="lgGo">Ingresar</button></div>`);
-  setTimeout(()=>$(nombreEditor()?"#lgPin":"#lgNombre")?.focus(),50);
+  let elegido=PERFILES.includes(nombreEditor())?nombreEditor():"";
+  $("#lgPerfiles").onclick=ev=>{ const b=ev.target.closest(".perfil"); if(!b) return; elegido=b.dataset.n;
+    document.querySelectorAll("#lgPerfiles .perfil").forEach(x=>x.classList.toggle("on",x===b)); $("#ferr").textContent=""; $("#lgPin").focus(); };
+  if(elegido) setTimeout(()=>$("#lgPin")?.focus(),50);
   const go=async ev=>{ ev?.preventDefault?.();
-    const nombre=$("#lgNombre").value.trim(), pin=$("#lgPin").value.trim();
-    if(!nombre){ $("#ferr").textContent="Escribí tu nombre."; return; }
+    const nombre=elegido, pin=$("#lgPin").value.trim();
+    if(!nombre){ $("#ferr").textContent="Elegí tu perfil."; return; }
     if(!pin){ $("#ferr").textContent="Escribí el PIN."; return; }
     $("#lgGo").disabled=true; $("#ferr").textContent="Verificando…";
     const {data,error}=await sb.rpc("verificar_pin",{p:pin});

@@ -225,3 +225,12 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;background:var(--p
 .auth{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2)}
 
 [hidden]{display:none!important}
+
+/* perfiles de ingreso */
+.perfiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.perfil{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer;text-align:left}
+.perfil span{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#ece8de;font-weight:700;font-size:12px;color:var(--ink2);flex:none}
+.perfil:hover{border-color:var(--ink3)}
+.perfil.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.perfil.on span{background:var(--accent);color:#fff}
+@media (max-width:480px){.perfiles{grid-template-columns:repeat(2,1fr)}}

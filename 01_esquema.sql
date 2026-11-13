@@ -14,6 +14,7 @@ create table if not exists public.espacios (
   lat         double precision,
   lng         double precision,
   fuente      text,
+  poligono    jsonb,                                 -- [[lat,lng],...] delimitación
   drive       jsonb not null default '[]'::jsonb,   -- [{label,url}]
   rubros      jsonb not null default '{}'::jsonb,   -- {juegos:{tiene,estado,nota}, ...}
   recs        jsonb not null default '[]'::jsonb,   -- [{texto,hecho,fecha}]

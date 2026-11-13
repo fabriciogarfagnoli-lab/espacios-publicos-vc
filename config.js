@@ -11,5 +11,8 @@ window.VC_CONFIG = {
   TITULO: "Espacios Públicos",
   SUBTITULO: "Villa Constitución · estado de situación y mantenimiento",
   CENTRO: [-33.2335, -60.3255],
-  ZOOM: 14
+  ZOOM: 14,
+  // Cuenta compartida de editores: se ingresa solo con la contraseña.
+  // (La contraseña NO va acá: se define en Supabase › Authentication › Users.)
+  EDITOR_EMAIL: "editores.vc@example.com"
 };

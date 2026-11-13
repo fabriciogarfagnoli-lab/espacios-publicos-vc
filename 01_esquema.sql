@@ -100,7 +100,11 @@ do $$ begin
   begin alter publication supabase_realtime add table public.registros; exception when others then null; end;
 end $$;
 
--- 7) EDITORES: reemplazá por los emails reales del equipo y ejecutá
+-- 7) EDITORES. Cuenta compartida (ingreso con contraseña): crear el usuario
+--    editores.vc@example.com en Authentication › Users (Auto Confirm) y habilitarlo:
+insert into public.editores (email, nombre) values ('editores.vc@example.com','Editores (cuenta compartida)')
+  on conflict (email) do nothing;
+-- Editores individuales opcionales:
 -- insert into public.editores (email, nombre) values
 --   ('tu.email@gmail.com', 'Tu nombre'),
 --   ('otra.persona@ejemplo.com', 'Nombre');

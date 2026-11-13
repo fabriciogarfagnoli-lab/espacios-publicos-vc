@@ -66,27 +66,42 @@ async function setSession(session){
   if(S.user){ const {data}=await sb.rpc("es_editor"); S.canWrite=!!data; }
   renderAuth(); renderAll();
 }
+const nombreEditor=()=>{ try{ return localStorage.getItem("vc_nombre")||""; }catch(_){ return ""; } };
+const autorActual=()=>nombreEditor()||S.user?.email||null;
 function renderAuth(){
   const el=$("#auth"); if(DEMO){ el.innerHTML=""; return; }
   if(!S.user){ el.innerHTML=`<button class="btn sm" id="btnLogin">Ingresar</button>`; return; }
-  el.innerHTML=`<span title="${esc(S.user.email)}">${esc(S.user.email.split("@")[0])}${S.canWrite?"":" · solo lectura"}</span><button class="btn sm ghost" id="btnLogout">Salir</button>`;
+  const quien=nombreEditor()||S.user.email.split("@")[0];
+  el.innerHTML=`<span title="${esc(S.user.email)}">${esc(quien)}${S.canWrite?"":" · solo lectura"}</span><button class="btn sm ghost" id="btnLogout">Salir</button>`;
 }
 $("#auth").addEventListener("click",async ev=>{
   if(ev.target.id==="btnLogout"){ await sb.auth.signOut(); toast("Sesión cerrada"); }
   if(ev.target.id==="btnLogin") abrirLogin();
 });
 function abrirLogin(){
+  const EM=(window.VC_CONFIG||{}).EDITOR_EMAIL||"";
   openModal(`<div class="dh"><h3>Ingresar para editar</h3><button class="x" data-close>✕</button></div>
-  <div class="db"><div class="fld"><label>Email</label><input type="text" id="lgEmail" placeholder="nombre@ejemplo.com" autocomplete="email"></div>
-  <div style="font-size:12.5px;color:var(--ink2)">Te enviamos un link de acceso por email (sin contraseña). Para poder editar, tu email tiene que estar habilitado en la lista de editores.</div></div>
-  <div class="df"><span class="err" id="ferr"></span><button class="btn" data-close>Cancelar</button><button class="btn pri" id="lgGo">Enviar link</button></div>`);
-  $("#lgGo").onclick=async()=>{
-    const email=$("#lgEmail").value.trim(); if(!/^\S+@\S+\.\S+$/.test(email)){ $("#ferr").textContent="Email inválido."; return; }
-    $("#lgGo").disabled=true;
-    const {error}=await sb.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin+location.pathname}});
-    if(error){ $("#ferr").textContent=error.message; $("#lgGo").disabled=false; return; }
-    closeModal(); toast("Revisá tu email y abrí el link de acceso.");
+  <form class="db" id="lgForm" autocomplete="on">
+    <input type="email" name="username" value="${esc(EM)}" autocomplete="username" hidden>
+    <div class="fld"><label>Tu nombre</label><input type="text" id="lgNombre" placeholder="Ej.: Fabricio" value="${esc(nombreEditor())}" autocomplete="name"></div>
+    <div class="fld"><label>Contraseña</label><input type="password" id="lgPass" autocomplete="current-password"></div>
+    <div style="font-size:12.5px;color:var(--ink2)">Tu nombre queda registrado como autor de lo que cargues.</div>
+    <button type="submit" hidden></button>
+  </form>
+  <div class="df"><span class="err" id="ferr"></span><button class="btn" data-close>Cancelar</button><button class="btn pri" id="lgGo">Ingresar</button></div>`);
+  setTimeout(()=>$(nombreEditor()?"#lgPass":"#lgNombre")?.focus(),50);
+  const go=async ev=>{ ev?.preventDefault?.();
+    const nombre=$("#lgNombre").value.trim(), password=$("#lgPass").value;
+    if(!nombre){ $("#ferr").textContent="Escribí tu nombre."; return; }
+    if(!password){ $("#ferr").textContent="Escribí la contraseña."; return; }
+    if(!EM){ $("#ferr").textContent="Falta EDITOR_EMAIL en config.js."; return; }
+    $("#lgGo").disabled=true; $("#ferr").textContent="";
+    try{ localStorage.setItem("vc_nombre",nombre); }catch(_){}
+    const {error}=await sb.auth.signInWithPassword({email:EM, password});
+    if(error){ $("#ferr").textContent=/invalid/i.test(error.message)?"Contraseña incorrecta.":error.message; $("#lgGo").disabled=false; return; }
+    closeModal(); toast("Ingresaste como "+nombre);
   };
+  $("#lgGo").onclick=go; $("#lgForm").onsubmit=go;
 }
 
 /* ---------- cálculo ---------- */
@@ -328,7 +343,7 @@ function abrirRegistro(id){
         fotos.push(await DB.uploadFoto(files[i], e.id)); }
       btn.textContent="Guardando…";
       const nuevo=segVal(f,"nuevo"), rubro=f.rubro.value||null;
-      const reg={espacio_id:e.id, tipo:f.tipo.value, fecha:f.fecha.value||today(), rubro, descripcion:f.descripcion.value.trim(), fotos, autor:S.user?.email||null};
+      const reg={espacio_id:e.id, tipo:f.tipo.value, fecha:f.fecha.value||today(), rubro, descripcion:f.descripcion.value.trim(), fotos, autor:autorActual()};
       const upd={};
       if(rubro && nuevo){ reg.cambios={[rubro]:nuevo}; upd.rubros=structuredClone(e.rubros||{});
         upd.rubros[rubro]={...(upd.rubros[rubro]||{nota:""}), tiene:nuevo!=="no", estado:nuevo==="no"?null:nuevo}; }

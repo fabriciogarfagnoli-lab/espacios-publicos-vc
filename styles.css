@@ -162,7 +162,7 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;background:var(--p
 .fcard .ph img{width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
 
 /* modal */
-.modal{position:fixed;inset:0;background:rgba(20,26,34,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal{position:fixed;inset:0;background:rgba(20,26,34,.45);display:none;align-items:center;justify-content:center;z-index:5000;padding:16px}
 .modal.open{display:flex}
 .dlg{background:var(--paper);border-radius:14px;width:620px;max-width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .dlg .dh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
@@ -187,10 +187,10 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;background:var(--p
 .recedit input{padding:6px 9px;border:1px solid var(--line2);border-radius:7px;background:#fff;width:100%}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap}
 .thumbs div{width:64px;height:64px;border-radius:8px;background:var(--bg) center/cover;border:1px solid var(--line);font-size:10px;display:grid;place-items:center;color:var(--ink3);text-align:center;overflow:hidden}
-.lightbox{position:fixed;inset:0;background:rgba(10,12,16,.88);display:none;align-items:center;justify-content:center;z-index:60;cursor:zoom-out}
+.lightbox{position:fixed;inset:0;background:rgba(10,12,16,.88);display:none;align-items:center;justify-content:center;z-index:5100;cursor:zoom-out}
 .lightbox.open{display:flex}
 .lightbox img{max-width:94vw;max-height:92vh;border-radius:6px}
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;z-index:70;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;z-index:5200;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .splash{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink2);text-align:center;z-index:4;pointer-events:none}
 .splash[hidden]{display:none}
@@ -234,3 +234,6 @@ table.mx{border-collapse:separate;border-spacing:0;width:100%;background:var(--p
 .perfil.on{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
 .perfil.on span{background:var(--accent);color:#fff}
 @media (max-width:480px){.perfiles{grid-template-columns:repeat(2,1fr)}}
+
+/* el mapa no debe tapar ventanas ni paneles */
+#map{isolation:isolate}

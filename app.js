@@ -115,11 +115,18 @@ function abrirLogin(){
 }
 
 /* ---------- cálculo ---------- */
+const ITEM_LBL={juegos:"juego",mobiliario:"elemento",iluminacion:"luminaria",veredas:"tramo",saludable:"aparato",deportivo:"cancha / equipo"};
+const ITEM_PH={juegos:"Ej.: Tobogán, hamaca doble, mangrullo…",mobiliario:"Ej.: Banco de hormigón, cesto, mesa…",iluminacion:"Ej.: Columna sector juegos…",veredas:"Ej.: Sendero diagonal…",saludable:"Ej.: Caminador, bicicleta fija…",deportivo:"Ej.: Arco de fútbol, aro de básquet…"};
+const EST_LBL={bueno:"Bueno",regular:"Regular",malo:"Malo"};
+const EST_COL={bueno:"var(--ok)",regular:"var(--mid)",malo:"var(--bad)"};
+function itemsEval(v){ return (v?.items||[]).filter(i=>PESO[i.estado]!=null); }
+function pesoRubro(v){ const it=itemsEval(v); if(it.length) return it.reduce((a,i)=>a+PESO[i.estado],0)/it.length; return PESO[v?.estado]; }
+function estadoDePeso(p){ return p==null?null:p>=75?"bueno":p>=45?"regular":"malo"; }
 function rubroEstado(v){ if(!v || v.tiene==null) return "na"; if(v.tiene===false) return "no"; return v.estado || "na"; }
 function puntaje(e){
   let s=0,n=0;
   for(const r of RUBROS){ const v=e.rubros?.[r.k]; if(!v) continue;
-    if(v.tiene===true && PESO[v.estado]!=null){ s+=PESO[v.estado]; n++; }
+    if(v.tiene===true && pesoRubro(v)!=null){ s+=pesoRubro(v); n++; }
     else if(v.tiene===false && r.esencial){ s+=PESO_FALTA; n++; } }
   return n ? Math.round(s/n) : null;
 }
@@ -282,10 +289,10 @@ function renderFicha(){
     <div class="meta">${esc([e.tipo,e.barrio,e.zona].filter(Boolean).join(" · "))}${e.ubicacion?`<br>${esc(e.ubicacion)}`:""}</div>
     ${S.canWrite?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn pri sm" id="fReg">+ Registrar actualización</button><button class="btn sm" id="fEdit">Editar ficha</button><button class="btn sm" id="fPlace">📍 Ubicar</button></div>`:""}`;
   const rub=RUBROS.map(r=>{ const v=e.rubros?.[r.k]; const [tc,tl]=tagFor(v,r.esencial); const st=rubroEstado(v);
-    const w=st==="bueno"?100:st==="regular"?55:st==="malo"?15:(st==="no"&&r.esencial)?25:0;
+    const pr=v?.tiene===true?pesoRubro(v):null; const w=pr!=null?Math.round(pr):(st==="no"&&r.esencial)?25:0;
     const col=st==="bueno"?"var(--ok)":st==="regular"?"var(--mid)":"var(--bad)";
     return `<div class="rub"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${r.ic}</svg></div>
-      <div><div class="t">${esc(r.t)}</div>${v?.nota?`<div class="nt">${esc(v.nota)}</div>`:""}${w?`<div class="rb"><i style="width:${w}%;background:${col}"></i></div>`:""}</div><span class="tag ${tc}">${tl}</span></div>`; }).join("");
+      <div><div class="t">${esc(r.t)}</div>${v?.nota?`<div class="nt">${esc(v.nota)}</div>`:""}${v?.tiene===true&&v.items?.length?`<div class="its">${v.items.map(i=>`<span class="it"><i style="background:${EST_COL[i.estado]||"var(--na)"}"></i>${esc(i.nombre||ITEM_LBL[r.k]||"Elemento")}${i.estado?` · ${EST_LBL[i.estado]}`:""}</span>`).join("")}</div>`:""}${v?.fotos?.length?`<div class="ph rph">${v.fotos.map(p=>{ const u=DB.fotoUrl(p); return `<img src="${esc(u)}" data-full="${esc(u)}" alt="foto" loading="lazy">`; }).join("")}</div>`:""}${w?`<div class="rb"><i style="width:${w}%;background:${col}"></i></div>`:""}</div><span class="tag ${tc}">${tl}</span></div>`; }).join("");
   const recs=(e.recs||[]).map((x,i)=>`<label class="rec${x.hecho?" done":""}"><input type="checkbox" data-ri="${i}" ${x.hecho?"checked":""} ${S.canWrite?"":"disabled"}><div><div class="tx">${esc(x.texto)}</div>${x.hecho&&x.fecha?`<div class="when">Cumplida ${fmtFecha(x.fecha)}</div>`:""}</div></label>`).join("");
   const gm = hasPos(e) ? `https://www.google.com/maps/search/?api=1&query=${e.lat.toFixed(6)},${e.lng.toFixed(6)}`
     : "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent([e.nombre,e.ubicacion,"Villa Constitución, Santa Fe"].filter(Boolean).join(", "));
@@ -303,7 +310,8 @@ function renderFicha(){
     ${e.fuente?`<div class="src">Fuente del relevamiento: ${esc(e.fuente)}</div>`:""}`;
   window.VC_onFicha?.(e);
 }
-function cambiosTxt(c){ return c?Object.entries(c).map(([k,v])=>`${esc(RK[k]?.t||k)} → <b>${esc(v==="no"?"No tiene":v)}</b>`).join(" · "):""; }
+function cambiosPlano(c){ return c?Object.entries(c).filter(([k])=>!k.startsWith("_")).map(([k,v])=>`${RK[k]?.t||k}${c._item?` (${c._item})`:""} → ${v==="no"?"No tiene":(EST_LBL[v]||v)}`).join(" · "):""; }
+function cambiosTxt(c){ return c?Object.entries(c).filter(([k])=>!k.startsWith("_")).map(([k,v])=>`${esc(RK[k]?.t||k)}${c._item?` (${esc(c._item)})`:""} → <b>${esc(v==="no"?"No tiene":(EST_LBL[v]||v))}</b>`).join(" · "):""; }
 function fotosHTML(r,size){ return (r.fotos||[]).map(p=>{ const u=DB.fotoUrl(p); return `<img src="${esc(u)}" data-full="${esc(u)}" alt="foto" loading="lazy" ${size?`style="width:${size}px;height:${size}px"`:""}>`; }).join(""); }
 function evHTML(r){ const ch=cambiosTxt(r.cambios), ph=fotosHTML(r);
   return `<div class="ev ${esc(r.tipo)}"><div class="h"><b>${esc(TIPOS_REG[r.tipo]||r.tipo)}</b><span>${fmtFecha(r.fecha)}</span>${r.rubro&&RK[r.rubro]?`<span class="tag t-na">${esc(RK[r.rubro].t)}</span>`:""}${r.autor?`<span>· ${esc(String(r.autor).split("@")[0])}</span>`:""}</div>
@@ -336,12 +344,14 @@ function abrirRegistro(id){
     <div class="fld"><label>Fecha</label><input type="date" name="fecha" value="${today()}" required></div></div>
     <div class="fld"><label>Rubro</label><select name="rubro"><option value="">General / varios</option>${RUBROS.map(r=>`<option value="${r.k}">${esc(r.t)}</option>`).join("")}</select></div>
     <div class="fld"><label>Descripción</label><textarea name="descripcion" placeholder="Ej.: Se repararon 2 bancos de durmientes y se pintaron todos los juegos." required></textarea></div>
-    <div class="fld" id="nuevoEstWrap" hidden><label>Nuevo estado del rubro (opcional)</label>${segHTML("nuevo",[["","Sin cambio"],["bueno","Bueno","b"],["regular","Regular","r"],["malo","Malo","m"],["no","No tiene"]],"")}</div>
+    <div class="fld" id="itemWrap" hidden><label>¿Qué elemento?</label><select name="item"></select></div>
+    <div class="fld" id="nuevoEstWrap" hidden><label>Nuevo estado (opcional)</label>${segHTML("nuevo",[["","Sin cambio"],["bueno","Bueno","b"],["regular","Regular","r"],["malo","Malo","m"],["no","No tiene"]],"")}</div>
     ${pend.length?`<div class="fld"><label>¿Cumple alguna recomendación pendiente?</label><select name="rec"><option value="">— Ninguna —</option>${pend.map(([r,i])=>`<option value="${i}">${esc(r.texto)}</option>`).join("")}</select></div>`:""}
     <div class="fld"><label>Fotos</label><input type="file" name="fotos" accept="image/*" multiple><div class="thumbs" id="thumbs" style="margin-top:6px"></div></div>
   </form><div class="df"><span class="err" id="ferr"></span><button class="btn" data-close>Cancelar</button><button class="btn pri" id="frSave">Guardar</button></div>`);
   const f=$("#fr");
-  f.rubro.onchange=()=>{ $("#nuevoEstWrap").hidden=!f.rubro.value; };
+  f.rubro.onchange=()=>{ const k=f.rubro.value, its=e.rubros?.[k]?.items||[]; $("#nuevoEstWrap").hidden=!k;
+    $("#itemWrap").hidden=!its.length; f.item.innerHTML=`<option value="">Todo el rubro</option>`+its.map((i,n)=>`<option value="${n}">${esc(i.nombre||ITEM_LBL[k]+" "+(n+1))}${i.estado?" ("+EST_LBL[i.estado]+")":""}</option>`).join(""); };
   f.fotos.onchange=()=>{ $("#thumbs").innerHTML=[...f.fotos.files].map(fl=>`<div style="background-image:url('${URL.createObjectURL(fl)}')"></div>`).join(""); };
   $("#frSave").onclick=async()=>{
     if(!f.descripcion.value.trim()){ $("#ferr").textContent="Escribí una descripción."; return; }
@@ -355,8 +365,11 @@ function abrirRegistro(id){
       const nuevo=segVal(f,"nuevo"), rubro=f.rubro.value||null;
       const reg={espacio_id:e.id, tipo:f.tipo.value, fecha:f.fecha.value||today(), rubro, descripcion:f.descripcion.value.trim(), fotos, autor:autorActual()};
       const upd={};
-      if(rubro && nuevo){ reg.cambios={[rubro]:nuevo}; upd.rubros=structuredClone(e.rubros||{});
-        upd.rubros[rubro]={...(upd.rubros[rubro]||{nota:""}), tiene:nuevo!=="no", estado:nuevo==="no"?null:nuevo}; }
+      const ii=f.item?.value;
+      if(rubro && nuevo){ reg.cambios={[rubro]:nuevo}; upd.rubros=structuredClone(e.rubros||{}); const cur=upd.rubros[rubro]||{nota:""};
+        if(ii!=="" && ii!=null && cur.items?.[+ii] && nuevo!=="no"){ cur.items[+ii].estado=nuevo; reg.cambios._item=cur.items[+ii].nombre||"";
+          const ev=itemsEval(cur); upd.rubros[rubro]={...cur, tiene:true, estado:estadoDePeso(ev.reduce((a,i)=>a+PESO[i.estado],0)/ev.length)}; }
+        else upd.rubros[rubro]={...cur, tiene:nuevo!=="no", estado:nuevo==="no"?null:nuevo}; }
       const ri=f.rec?.value;
       if(ri){ const recs=structuredClone(e.recs||[]); if(recs[+ri]){ recs[+ri].hecho=true; recs[+ri].fecha=reg.fecha; reg.rec_hecha=recs[+ri].texto; upd.recs=recs; } }
       await DB.addRegistro(reg); if(Object.keys(upd).length) await DB.update(e.id,upd);
@@ -365,13 +378,28 @@ function abrirRegistro(id){
   };
 }
 
+function itemRow(k,i={}){ return `<div class="itemrow"><input type="text" data-iname value="${esc(i.nombre||"")}" placeholder="${esc(ITEM_PH[k]||"Nombre")}">${segHTML("iest",[["","—"],["bueno","Bueno","b"],["regular","Regular","r"],["malo","Malo","m"]],i.estado||"")}<button type="button" class="btn sm ghost" data-delitem title="Quitar">✕</button></div>`; }
+function leerItems(rb){ return [...rb.querySelectorAll(".itemrow")].map(row=>({nombre:row.querySelector("[data-iname]").value.trim(), estado:segVal(row,"iest")||null})).filter(i=>i.nombre||i.estado); }
+function syncRub(rb){
+  const si=segVal(rb,"tiene_"+rb.dataset.r)==="si"; rb.querySelector("[data-estwrap]").hidden=!si; rb.querySelector("[data-itemswrap]").hidden=!si;
+  const it=leerItems(rb).filter(i=>PESO[i.estado]!=null), calc=rb.querySelector("[data-calc]"), est=rb.querySelector(`.seg[data-seg="est_${rb.dataset.r}"]`);
+  if(it.length){ const p=it.reduce((a,i)=>a+PESO[i.estado],0)/it.length, e=estadoDePeso(p);
+    calc.innerHTML=`Estado del rubro calculado con ${it.length} ${it.length===1?"elemento":"elementos"}: <b style="color:${EST_COL[e]}">${EST_LBL[e]}</b>`; calc.hidden=false; est.classList.add("auto");
+    est.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===e)); }
+  else { calc.hidden=true; est.classList.remove("auto"); }
+}
 function abrirEdicion(id){
   const isNew=!id; const e=isNew?{nombre:"",tipo:"Plaza",zona:"Zona 1",barrio:"",ubicacion:"",rubros:{},recs:[],drive:[]}:structuredClone(S.espacios.get(id));
   const zonas=[...new Set([...ZONAS_ORDEN,...[...S.espacios.values()].map(x=>x.zona).filter(Boolean)])];
   const rubEd=RUBROS.map(r=>{ const v=e.rubros?.[r.k]||{}; const tiene=v.tiene===true?"si":v.tiene===false?"no":"";
     return `<div class="rubed" data-r="${r.k}"><div class="rt">${esc(r.t)}</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${segHTML("tiene_"+r.k,[["","Sin dato"],["si","Tiene"],["no","No tiene"]],tiene)}
       <span data-estwrap ${tiene==="si"?"":"hidden"}>${segHTML("est_"+r.k,[["","Sin evaluar"],["bueno","Bueno","b"],["regular","Regular","r"],["malo","Malo","m"]],v.estado||"")}</span></div>
-      <input type="text" data-nota placeholder="Detalle (cantidad, faltantes, observaciones)" value="${esc(v.nota||"")}" style="padding:7px 9px;border:1px solid var(--line2);border-radius:7px;background:#fff"></div>`; }).join("");
+      <div class="itemswrap" data-itemswrap ${tiene==="si"?"":"hidden"}><div class="items" data-items>${(v.items||[]).map(i=>itemRow(r.k,i)).join("")}</div>
+        <div class="calc" data-calc></div>
+        <button type="button" class="btn sm ghost" data-additem>+ Agregar ${esc(ITEM_LBL[r.k]||"elemento")}</button></div>
+      <input type="text" data-nota placeholder="Detalle (cantidad, faltantes, observaciones)" value="${esc(v.nota||"")}" style="padding:7px 9px;border:1px solid var(--line2);border-radius:7px;background:#fff">
+      <div class="rfotos"><div class="thumbs" data-thumbs>${(v.fotos||[]).map(p=>`<div class="th" data-path="${esc(p)}" style="background-image:url('${esc(DB.fotoUrl(p))}')"><button type="button" data-delfoto title="Quitar foto">✕</button></div>`).join("")}</div>
+        <label class="btn sm ghost addfoto">📷 Agregar fotos<input type="file" accept="image/*" multiple data-rfile hidden></label></div></div>`; }).join("");
   const recRow=r=>`<div class="row"><input type="text" value="${esc(r.texto)}" data-hecho="${r.hecho?1:""}" data-fecha="${esc(r.fecha||"")}"><button type="button" class="btn sm ghost" data-delrec>✕</button></div>`;
   openModal(`<div class="dh"><h3>${isNew?"Nuevo espacio":"Editar ficha · "+esc(e.nombre)}</h3><button class="x" data-close>✕</button></div>
   <form class="db" id="fe">
@@ -387,7 +415,18 @@ function abrirEdicion(id){
   </form><div class="df"><span class="err" id="ferr"></span>${!isNew?`<button class="btn ghost" id="feDel" style="color:var(--bad);margin-right:auto">Eliminar</button>`:""}<button class="btn" data-close>Cancelar</button><button class="btn pri" id="feSave">Guardar</button></div>`);
   const f=$("#fe");
   window.VC_onEdit?.(e, isNew);
-  f.addEventListener("segchange",ev=>{ const rb=ev.target.closest(".rubed"); if(rb) rb.querySelector("[data-estwrap]").hidden=segVal(rb,"tiene_"+rb.dataset.r)!=="si"; });
+  const nuevasFotos=new Map(); // rubro -> File[]
+  f.querySelectorAll(".rubed").forEach(syncRub);
+  f.addEventListener("segchange",ev=>{ const rb=ev.target.closest(".rubed"); if(rb) syncRub(rb); });
+  f.addEventListener("input",ev=>{ const rb=ev.target.closest(".rubed"); if(rb&&ev.target.matches("[data-iname]")) syncRub(rb); });
+  f.addEventListener("click",ev=>{ const rb=ev.target.closest(".rubed"); if(!rb) return;
+    if(ev.target.closest("[data-additem]")){ rb.querySelector("[data-items]").insertAdjacentHTML("beforeend",itemRow(rb.dataset.r)); rb.querySelector(".itemrow:last-child [data-iname]").focus(); syncRub(rb); }
+    if(ev.target.closest("[data-delitem]")){ ev.target.closest(".itemrow").remove(); syncRub(rb); }
+    if(ev.target.closest("[data-delfoto]")){ const th=ev.target.closest(".th"); if(th.dataset.nf!=null){ const arr=nuevasFotos.get(rb.dataset.r)||[]; arr[+th.dataset.nf]=null; } th.remove(); } });
+  f.addEventListener("change",ev=>{ if(!ev.target.matches("[data-rfile]")) return; const rb=ev.target.closest(".rubed"), k=rb.dataset.r;
+    const arr=nuevasFotos.get(k)||[]; nuevasFotos.set(k,arr);
+    for(const fl of ev.target.files){ arr.push(fl); rb.querySelector("[data-thumbs]").insertAdjacentHTML("beforeend",`<div class="th nueva" data-nf="${arr.length-1}" style="background-image:url('${URL.createObjectURL(fl)}')"><button type="button" data-delfoto title="Quitar foto">✕</button></div>`); }
+    ev.target.value=""; });
   $("#addRec").onclick=()=>{ $("#recEd").insertAdjacentHTML("beforeend",recRow({texto:""})); $("#recEd").lastElementChild.querySelector("input").focus(); };
   $("#recEd").onclick=ev=>{ if(ev.target.dataset.delrec!=null) ev.target.closest(".row").remove(); };
   if($("#feDel")) $("#feDel").onclick=async()=>{ const b=$("#feDel"); if(b.dataset.c!=="1"){ b.dataset.c="1"; b.textContent="¿Confirmar eliminación? (borra también su bitácora)"; return; }
@@ -395,17 +434,25 @@ function abrirEdicion(id){
   $("#feSave").onclick=async()=>{
     const nombre=f.nombre.value.trim(); if(!nombre){ $("#ferr").textContent="Falta el nombre."; return; }
     const rubros={}; f.querySelectorAll(".rubed").forEach(rb=>{ const k=rb.dataset.r, t=segVal(rb,"tiene_"+k), est=segVal(rb,"est_"+k);
-      rubros[k]={tiene:t==="si"?true:t==="no"?false:null, estado:t==="si"&&est?est:null, nota:rb.querySelector("[data-nota]").value.trim()}; });
+      const items=t==="si"?leerItems(rb):[]; const ev=itemsEval({items}); const calc=ev.length?estadoDePeso(ev.reduce((a,i)=>a+PESO[i.estado],0)/ev.length):null;
+      rubros[k]={tiene:t==="si"?true:t==="no"?false:null, estado:t==="si"?(calc||est||null):null, nota:rb.querySelector("[data-nota]").value.trim(),
+        items, fotos:[...rb.querySelectorAll(".th[data-path]")].map(x=>x.dataset.path)}; });
     const recs=[...f.querySelectorAll("#recEd input")].map(i=>({texto:i.value.trim(),hecho:!!i.dataset.hecho,fecha:i.dataset.fecha||null})).filter(r=>r.texto);
     const dUrl=f.drive.value.trim();
     const drive=dUrl?[{label:(e.drive?.[0]?.url===dUrl?e.drive[0].label:"Fotos en Drive")||"Fotos en Drive",url:dUrl},...(e.drive||[]).slice(1)]:(e.drive||[]).slice(1);
     const data={nombre,tipo:f.tipo.value.trim(),zona:f.zona.value,barrio:f.barrio.value.trim(),ubicacion:f.ubicacion.value.trim(),rubros,recs,drive};
     $("#feSave").disabled=true;
     try{
+      const pend=[...nuevasFotos].flatMap(([k,arr])=>arr.filter(Boolean).map(fl=>[k,fl]));
+      if(pend.length && isNew) throw new Error("Guardá el espacio primero y después agregá las fotos.");
+      for(let i=0;i<pend.length;i++){ const [k,fl]=pend[i]; $("#feSave").textContent=`Subiendo foto ${i+1}/${pend.length}…`;
+        if(fl.size>15*1024*1024) throw new Error(`La foto ${fl.name} supera 15 MB.`);
+        rubros[k].fotos.push(await DB.uploadFoto(fl, `${id}/${k}`)); }
+      $("#feSave").textContent="Guardando…";
       if(isNew){ const nid=nombre.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,40)+"-"+Math.random().toString(36).slice(2,6);
         await DB.insert({id:nid,...data}); closeModal(); toast("Espacio creado"); await reload(); select(nid); }
       else { await DB.update(id,data); closeModal(); toast("Ficha actualizada"); reload(); }
-    }catch(err){ $("#feSave").disabled=false; $("#ferr").textContent=errMsg(err); }
+    }catch(err){ $("#feSave").disabled=false; $("#feSave").textContent="Guardar"; $("#ferr").textContent=errMsg(err); }
   };
 }
 $("#btnNuevo").onclick=()=>abrirEdicion(null);
@@ -445,11 +492,13 @@ async function descargarExcel(){
     const esp=ordenar([...S.espacios.values()]).map(e=>{ const av=avanceRecs(e), p=puntaje(e), u=regsDe(e.id)[0];
       const o={ID:e.id,Espacio:e.nombre,Tipo:e.tipo||"",Zona:e.zona||"",Barrio:e.barrio||"",Ubicación:e.ubicacion||"",Puntaje:p??"",Semáforo:SEMLAB[sem(p)]};
       RUBROS.forEach(r=>{ o[r.t]=tagFor(e.rubros?.[r.k],r.esencial)[1]; });
+      o["Detalle de elementos"]=RUBROS.flatMap(r=>{ const v=e.rubros?.[r.k]; return v?.tiene===true&&v.items?.length?[`${r.t}: `+v.items.map(i=>`${i.nombre||"s/n"} (${EST_LBL[i.estado]||"sin evaluar"})`).join(", ")]:[]; }).join(" | ");
+      o["Fotos por rubro"]=RUBROS.reduce((a,r)=>a+(e.rubros?.[r.k]?.fotos?.length||0),0);
       Object.assign(o,{"Recomend. cumplidas":av?.d??0,"Recomend. total":av?.t??0,"Último registro":u?.fecha||"",Lat:e.lat??"",Lng:e.lng??""});
       return o; });
     const regs=[...S.registros].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(r=>{ const e=S.espacios.get(r.espacio_id);
       return {Fecha:r.fecha||"",Espacio:e?.nombre||r.espacio_id,Zona:e?.zona||"",Tipo:TIPOS_REG[r.tipo]||r.tipo||"",Rubro:RK[r.rubro]?.t||r.rubro||"",
-        Descripción:r.descripcion||"",Cambios:r.cambios?Object.entries(r.cambios).map(([k,v])=>`${RK[k]?.t||k} → ${v==="no"?"No tiene":v}`).join(" · "):"","Recomendación cumplida":r.rec_hecha||"",
+        Descripción:r.descripcion||"",Cambios:cambiosPlano(r.cambios),"Recomendación cumplida":r.rec_hecha||"",
         Fotos:(r.fotos||[]).map(f=>DB.fotoUrl(f)).join(" "),Autor:r.autor||"",Cargado:r.creado||""}; });
     const wb=X.utils.book_new();
     const add=(rows,name)=>{ const ws=X.utils.json_to_sheet(rows.length?rows:[{"(sin datos)":""}]);

@@ -10,6 +10,10 @@ css.textContent = `
 .drawbar .info b{color:var(--ink)}
 .vtx{width:12px;height:12px;background:#fff;border:2.5px solid #135e63;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:move}
 .vtx.first{background:#135e63}
+.polysw{position:absolute;right:14px;top:98px;z-index:500;display:flex;align-items:center;gap:6px;background:var(--paper);border:1px solid var(--line2);border-radius:9px;padding:4px 4px 4px 10px;font-size:12px;font-weight:600;color:var(--ink2);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.polysw .seg button{padding:4px 9px}
+.polysw .seg button.on.v{background:#3f8a3a}
+.polysw .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .polyinfo{margin-top:8px;font-size:12.5px;color:var(--ink2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 `;
 document.head.appendChild(css);
@@ -35,14 +39,37 @@ const fmtA = m2 => m2 >= 10000 ? (m2/10000).toLocaleString("es-AR",{maximumFract
 const fmtL = m => Math.round(m).toLocaleString("es-AR")+" m";
 function centroid(pts){ return [pts.reduce((s,p)=>s+p[0],0)/pts.length, pts.reduce((s,p)=>s+p[1],0)/pts.length]; }
 
+/* --- modo de color: "verde" (espacio público) o "semaforo" (estado) --- */
+const VERDE = { fill:"#5aa04b", stroke:"#2f6b2a" };
+let modo = (()=>{ try{ return localStorage.getItem("vc_polymode")||"verde"; }catch(_){ return "verde"; } })();
+function polyStyle(e, sel, on){
+  if(modo === "semaforo"){
+    const col = VC.SEMCOL[VC.sem(VC.puntaje(e))];
+    return { color:col, weight: sel?3.5:2, opacity: on?1:.25, fillColor:col, fillOpacity: on?(sel?.6:.45):.06 };
+  }
+  return { color:VERDE.stroke, weight: sel?3.5:1.6, opacity: on?.95:.25, fillColor:VERDE.fill, fillOpacity: on?(sel?.6:.42):.06 };
+}
+function montarSelector(){
+  const host = document.getElementById("map")?.parentElement; if(!host || document.getElementById("polysw")) return;
+  const el = document.createElement("div"); el.className = "polysw"; el.id = "polysw";
+  el.innerHTML = `Polígonos <div class="seg"><button type="button" data-m="verde" class="v"><i class="sw" style="background:${VERDE.fill}"></i>Espacio verde</button><button type="button" data-m="semaforo"><i class="sw" style="background:linear-gradient(90deg,${VC.SEMCOL.r} 33%,${VC.SEMCOL.y} 33% 66%,${VC.SEMCOL.g} 66%)"></i>Semáforo</button></div>`;
+  const pintar = () => el.querySelectorAll("button").forEach(b=>b.classList.toggle("on", b.dataset.m===modo));
+  el.addEventListener("click", ev => { const b = ev.target.closest("button[data-m]"); if(!b) return; ev.stopPropagation();
+    modo = b.dataset.m; try{ localStorage.setItem("vc_polymode", modo); }catch(_){}
+    pintar(); drawAll(); });
+  L.DomEvent.disableClickPropagation(el);
+  pintar(); host.appendChild(el);
+}
+
 /* --- polígonos guardados --- */
 function drawAll(){
+  montarSelector();
   polyLayer.clearLayers();
   const vis = new Set(VC.filtrados().map(e=>e.id));
   for(const e of S.espacios.values()){
     if(!hasPoly(e) || (D && D.id===e.id)) continue;
-    const col = VC.SEMCOL[VC.sem(VC.puntaje(e))], sel = S.sel===e.id, on = vis.has(e.id);
-    L.polygon(e.poligono, { color:col, weight: sel?3:2, opacity: on?1:.25, fillColor:col, fillOpacity: on?(sel?.35:.18):.05 })
+    const sel = S.sel===e.id, on = vis.has(e.id);
+    L.polygon(e.poligono, polyStyle(e, sel, on))
       .bindTooltip(VC.esc(e.nombre), {sticky:true, className:"ptip"})
       .on("click", ev => { if(D) return; L.DomEvent.stopPropagation(ev); VC.select(e.id); })
       .addTo(polyLayer);

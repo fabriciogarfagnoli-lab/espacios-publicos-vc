@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Espacios Públicos · Villa Constitución</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div>
+      <div><h1 id="titulo">Espacios Públicos</h1><small id="subtitulo"></small></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-v="mapa" class="on">Mapa</button>
+      <button data-v="matriz">Matriz</button>
+      <button data-v="bitacora">Bitácora</button>
+    </nav>
+    <div class="hsp"></div>
+    <div class="status" id="status"><span class="dot"></span><span id="statusTx">Cargando…</span></div>
+    <div class="auth" id="auth"></div>
+    <button class="btn pri" id="btnNuevo" hidden>+ Nuevo espacio</button>
+  </header>
+  <section class="kpis" id="kpis"></section>
+  <div class="main">
+    <aside>
+      <div class="filters">
+        <input type="search" id="q" placeholder="Buscar plaza, barrio, calle…">
+        <div class="frow">
+          <select id="fZona"><option value="">Todas las zonas</option></select>
+          <select id="fTipo"><option value="">Todos los tipos</option></select>
+        </div>
+        <div class="chips" id="fSem"></div>
+      </div>
+      <div class="list" id="list"></div>
+    </aside>
+    <div class="stage">
+      <div class="view on" id="v-mapa">
+        <div id="map"></div>
+        <div class="basesw" id="basesw">
+          <button data-b="plano" class="on">Plano</button>
+          <button data-b="sat">Satélite</button>
+          <button data-b="osm">Calles</button>
+        </div>
+        <label class="ovsw" id="ovsw"><input type="checkbox" id="ovPlano" checked> Plano municipal</label>
+        <div class="mapbar" id="mapbar"></div>
+        <div class="legend">
+          <div><span class="sw" style="background:var(--ok)"></span>Buen estado (≥ 75)</div>
+          <div><span class="sw" style="background:var(--mid)"></span>Regular (45–74)</div>
+          <div><span class="sw" style="background:var(--bad)"></span>Requiere intervención (&lt; 45)</div>
+          <div><span class="sw" style="background:var(--na)"></span>Sin relevar</div>
+        </div>
+      </div>
+      <div class="view" id="v-matriz"></div>
+      <div class="view" id="v-bitacora"></div>
+      <div class="ficha" id="ficha">
+        <div class="fhead" id="fhead"></div>
+        <div class="fbody" id="fbody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal" id="modal"><div class="dlg" id="dlg"></div></div>
+<div class="lightbox" id="lightbox"><img id="lbimg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script src="leaflet.js"></script>
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

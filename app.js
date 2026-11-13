@@ -256,7 +256,8 @@ function renderPins(){
   }
   window.VC_onPins?.();
 }
-map.on("click",ev=>{ if(S.placing && S.sel && S.canWrite) savePos(S.sel, ev.latlng.lat, ev.latlng.lng); });
+map.on("click",ev=>{ if(S.placing && S.sel && S.canWrite) savePos(S.sel, ev.latlng.lat, ev.latlng.lng);
+  else if(!S.placing && S.sel && !$("#map").classList.contains("placing")) closeFicha(); });
 async function savePos(id,lat,lng){
   const e=S.espacios.get(id); if(!e) return; e.lat=+lat.toFixed(7); e.lng=+lng.toFixed(7); renderPins(); renderList(); renderKPIs();
   try{ await DB.update(id,{lat:e.lat,lng:e.lng}); toast("Ubicación guardada"); }catch(err){ toast(errMsg(err)); }
@@ -285,7 +286,7 @@ const safeUrl = u => /^https:\/\//i.test(String(u||"")) ? u : "#";
 function renderFicha(){
   const e=S.espacios.get(S.sel); if(!e){ $("#ficha").classList.remove("open"); return; }
   const p=puntaje(e), s=sem(p), av=avanceRecs(e);
-  $("#fhead").innerHTML=`<div class="top"><h2>${esc(e.nombre)}</h2><button class="x" id="fClose">✕</button></div>
+  $("#fhead").innerHTML=`<div class="top"><h2>${esc(e.nombre)}</h2><button class="btn sm ghost fcerrar" id="fClose" title="Cerrar ficha">✕ Cerrar</button></div>
     <div class="meta">${esc([e.tipo,e.barrio,e.zona].filter(Boolean).join(" · "))}${e.ubicacion?`<br>${esc(e.ubicacion)}`:""}</div>
     ${S.canWrite?`<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"><button class="btn pri sm" id="fReg">+ Registrar actualización</button><button class="btn sm" id="fEdit">Editar ficha</button><button class="btn sm" id="fPlace">📍 Ubicar</button></div>`:""}`;
   const rub=RUBROS.map(r=>{ const v=e.rubros?.[r.k]; const [tc,tl]=tagFor(v,r.esencial); const st=rubroEstado(v);

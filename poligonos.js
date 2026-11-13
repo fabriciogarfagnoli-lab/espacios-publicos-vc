@@ -5,7 +5,7 @@ const { map, S } = VC;
 
 const css = document.createElement("style");
 css.textContent = `
-.drawbar{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:600;background:var(--paper);border:1px solid var(--line2);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.15);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:94%}
+.drawbar{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;z-index:900;background:var(--paper);border:1px solid var(--line2);border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.15);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:94%}
 .drawbar .info{font-size:12.5px;color:var(--ink2);margin-right:4px}
 .drawbar .info b{color:var(--ink)}
 .vtx{width:12px;height:12px;background:#fff;border:2.5px solid #135e63;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:move}

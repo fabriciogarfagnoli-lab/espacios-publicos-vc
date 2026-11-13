@@ -16,14 +16,15 @@ Sin configurar Supabase, el sitio abre igual en **modo demostración** (solo lec
 1. Entrá a <https://supabase.com>, creá una cuenta y un **New project**. Región: *South America (São Paulo)*. Guardá la contraseña.
 2. En el proyecto abrí **SQL Editor → New query**, pegá el contenido de `01_esquema.sql` y apretá **Run**.
 3. Hacé lo mismo con `02_datos_iniciales.sql`, que carga los 71 espacios.
-4. **Ingreso con contraseña (cuenta compartida):** en **Authentication → Users → Add user → Create new user** creá el usuario `editores.vc@example.com` con la contraseña del equipo y tildá **Auto Confirm User**. Ya está habilitado como editor por `01_esquema.sql`. En la web, el botón **Ingresar** pide solo *tu nombre* (queda como autor de cada registro) y la contraseña.
-   Opcional: editores individuales. En una consulta nueva ejecutá esto, con los emails reales del equipo:
+4. **Ingreso con PIN (sin usuarios):** ejecutá `03_pin.sql` en el SQL Editor y después fijá el PIN del equipo con
+   `select public.cambiar_pin('TU_PIN');` (se guarda solo el hash). Para cambiarlo, volvé a ejecutar esa línea. En la web, **Ingresar** pide *tu nombre* (queda como autor de cada registro) y el PIN.
+   Opcional, editores por email (ingreso por link):
    ```sql
    insert into public.editores (email, nombre) values
      ('tu.email@gmail.com', 'Fabricio'),
      ('companero@ejemplo.com', 'Nombre');
    ```
-   Cualquiera puede **ver** la plataforma, pero solo estos emails pueden **editar**.
+   Cualquiera puede **ver** la plataforma; solo quien tenga el PIN puede **editar**.
 5. Andá a **Project Settings → API** y copiá la **Project URL** y la clave **anon public**.
 
 ### 2. Configurar el sitio

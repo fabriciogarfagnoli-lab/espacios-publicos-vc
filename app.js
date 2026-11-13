@@ -35,9 +35,11 @@ const DB = {
   async init(){
     if(DEMO) return;
     const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
-    sb = createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
-    sb.auth.onAuthStateChange(async (_ev, session)=>{ await setSession(session); });
-    const { data } = await sb.auth.getSession(); await setSession(data.session);
+    const pin=pinGuardado();
+    sb = createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
+      auth:{persistSession:false, autoRefreshToken:false, detectSessionInUrl:false},
+      global:{headers: pin?{"x-pin":pin}:{}} });
+    await setSession(pin);
     sb.channel("cambios")
       .on("postgres_changes",{event:"*",schema:"public",table:"espacios"},()=>reload())
       .on("postgres_changes",{event:"*",schema:"public",table:"registros"},()=>reload())
@@ -61,45 +63,49 @@ const DB = {
   },
   fotoUrl(path){ return sb ? sb.storage.from("fotos").getPublicUrl(path).data.publicUrl : ""; },
 };
-async function setSession(session){
-  S.user = session?.user || null; S.canWrite=false;
-  if(S.user){ const {data}=await sb.rpc("es_editor"); S.canWrite=!!data; }
+const ls={ get:k=>{ try{ return localStorage.getItem(k)||""; }catch(_){ return ""; } },
+  set:(k,v)=>{ try{ v?localStorage.setItem(k,v):localStorage.removeItem(k); }catch(_){} } };
+const pinGuardado=()=>ls.get("vc_pin");
+const nombreEditor=()=>ls.get("vc_nombre");
+const autorActual=()=>nombreEditor()||null;
+async function setSession(pin){
+  S.user=null; S.canWrite=false;
+  if(pin){
+    const {data,error}=await sb.rpc("es_editor");
+    if(!error && data){ S.canWrite=true; S.user={nombre:nombreEditor()||"Editor"}; }
+    else if(!error){ ls.set("vc_pin",""); toast("El PIN cambió: volvé a ingresar."); }
+    else toast("No se pudo verificar el PIN: "+errMsg(error));
+  }
   renderAuth(); renderAll();
 }
-const nombreEditor=()=>{ try{ return localStorage.getItem("vc_nombre")||""; }catch(_){ return ""; } };
-const autorActual=()=>nombreEditor()||S.user?.email||null;
 function renderAuth(){
   const el=$("#auth"); if(DEMO){ el.innerHTML=""; return; }
   if(!S.user){ el.innerHTML=`<button class="btn sm" id="btnLogin">Ingresar</button>`; return; }
-  const quien=nombreEditor()||S.user.email.split("@")[0];
-  el.innerHTML=`<span title="${esc(S.user.email)}">${esc(quien)}${S.canWrite?"":" · solo lectura"}</span><button class="btn sm ghost" id="btnLogout">Salir</button>`;
+  el.innerHTML=`<span>${esc(S.user.nombre)}</span><button class="btn sm ghost" id="btnLogout">Salir</button>`;
 }
-$("#auth").addEventListener("click",async ev=>{
-  if(ev.target.id==="btnLogout"){ await sb.auth.signOut(); toast("Sesión cerrada"); }
+$("#auth").addEventListener("click",ev=>{
+  if(ev.target.id==="btnLogout"){ ls.set("vc_pin",""); location.reload(); }
   if(ev.target.id==="btnLogin") abrirLogin();
 });
 function abrirLogin(){
-  const EM=(window.VC_CONFIG||{}).EDITOR_EMAIL||"";
   openModal(`<div class="dh"><h3>Ingresar para editar</h3><button class="x" data-close>✕</button></div>
-  <form class="db" id="lgForm" autocomplete="on">
-    <input type="email" name="username" value="${esc(EM)}" autocomplete="username" hidden>
+  <form class="db" id="lgForm" autocomplete="off">
     <div class="fld"><label>Tu nombre</label><input type="text" id="lgNombre" placeholder="Ej.: Fabricio" value="${esc(nombreEditor())}" autocomplete="name"></div>
-    <div class="fld"><label>Contraseña</label><input type="password" id="lgPass" autocomplete="current-password"></div>
-    <div style="font-size:12.5px;color:var(--ink2)">Tu nombre queda registrado como autor de lo que cargues.</div>
+    <div class="fld"><label>PIN</label><input type="password" id="lgPin" autocomplete="off" style="letter-spacing:.3em"></div>
+    <div style="font-size:12.5px;color:var(--ink2)">Tu nombre queda registrado como autor de lo que cargues. El PIN se recuerda en este dispositivo hasta que toques “Salir”.</div>
     <button type="submit" hidden></button>
   </form>
   <div class="df"><span class="err" id="ferr"></span><button class="btn" data-close>Cancelar</button><button class="btn pri" id="lgGo">Ingresar</button></div>`);
-  setTimeout(()=>$(nombreEditor()?"#lgPass":"#lgNombre")?.focus(),50);
+  setTimeout(()=>$(nombreEditor()?"#lgPin":"#lgNombre")?.focus(),50);
   const go=async ev=>{ ev?.preventDefault?.();
-    const nombre=$("#lgNombre").value.trim(), password=$("#lgPass").value;
+    const nombre=$("#lgNombre").value.trim(), pin=$("#lgPin").value.trim();
     if(!nombre){ $("#ferr").textContent="Escribí tu nombre."; return; }
-    if(!password){ $("#ferr").textContent="Escribí la contraseña."; return; }
-    if(!EM){ $("#ferr").textContent="Falta EDITOR_EMAIL en config.js."; return; }
-    $("#lgGo").disabled=true; $("#ferr").textContent="";
-    try{ localStorage.setItem("vc_nombre",nombre); }catch(_){}
-    const {error}=await sb.auth.signInWithPassword({email:EM, password});
-    if(error){ $("#ferr").textContent=/invalid/i.test(error.message)?"Contraseña incorrecta.":error.message; $("#lgGo").disabled=false; return; }
-    closeModal(); toast("Ingresaste como "+nombre);
+    if(!pin){ $("#ferr").textContent="Escribí el PIN."; return; }
+    $("#lgGo").disabled=true; $("#ferr").textContent="Verificando…";
+    const {data,error}=await sb.rpc("verificar_pin",{p:pin});
+    if(error){ $("#ferr").textContent=errMsg(error); $("#lgGo").disabled=false; return; }
+    if(!data){ $("#ferr").textContent="PIN incorrecto."; $("#lgGo").disabled=false; $("#lgPin").select(); return; }
+    ls.set("vc_nombre",nombre); ls.set("vc_pin",pin); location.reload();
   };
   $("#lgGo").onclick=go; $("#lgForm").onsubmit=go;
 }

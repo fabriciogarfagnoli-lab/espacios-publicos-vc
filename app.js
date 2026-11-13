@@ -222,6 +222,7 @@ function renderPins(){
     m.on("dragend",ev=>{ const p=ev.target.getLatLng(); savePos(e.id,p.lat,p.lng); });
     m.addTo(pinLayer);
   }
+  window.VC_onPins?.();
 }
 map.on("click",ev=>{ if(S.placing && S.sel && S.canWrite) savePos(S.sel, ev.latlng.lat, ev.latlng.lng); });
 async function savePos(id,lat,lng){
@@ -275,6 +276,7 @@ function renderFicha(){
     <div class="sec"><h3>Bitácora de trabajos y actualizaciones</h3></div>
     ${regsDe(e.id).length?`<div class="tl">${regsDe(e.id).map(evHTML).join("")}</div>`:`<div class="empty">Todavía no hay registros.</div>`}
     ${e.fuente?`<div class="src">Fuente del relevamiento: ${esc(e.fuente)}</div>`:""}`;
+  window.VC_onFicha?.(e);
 }
 function cambiosTxt(c){ return c?Object.entries(c).map(([k,v])=>`${esc(RK[k]?.t||k)} → <b>${esc(v==="no"?"No tiene":v)}</b>`).join(" · "):""; }
 function fotosHTML(r,size){ return (r.fotos||[]).map(p=>{ const u=DB.fotoUrl(p); return `<img src="${esc(u)}" data-full="${esc(u)}" alt="foto" loading="lazy" ${size?`style="width:${size}px;height:${size}px"`:""}>`; }).join(""); }
@@ -359,6 +361,7 @@ function abrirEdicion(id){
     <div class="recedit" id="recEd">${(e.recs||[]).map(recRow).join("")}</div>
   </form><div class="df"><span class="err" id="ferr"></span>${!isNew?`<button class="btn ghost" id="feDel" style="color:var(--bad);margin-right:auto">Eliminar</button>`:""}<button class="btn" data-close>Cancelar</button><button class="btn pri" id="feSave">Guardar</button></div>`);
   const f=$("#fe");
+  window.VC_onEdit?.(e, isNew);
   f.addEventListener("segchange",ev=>{ const rb=ev.target.closest(".rubed"); if(rb) rb.querySelector("[data-estwrap]").hidden=segVal(rb,"tiene_"+rb.dataset.r)!=="si"; });
   $("#addRec").onclick=()=>{ $("#recEd").insertAdjacentHTML("beforeend",recRow({texto:""})); $("#recEd").lastElementChild.querySelector("input").focus(); };
   $("#recEd").onclick=ev=>{ if(ev.target.dataset.delrec!=null) ev.target.closest(".row").remove(); };
@@ -399,7 +402,7 @@ function renderMatriz(){
     ${RUBROS.map(r=>`<td class="c"><span class="cell ${cellFor(e.rubros?.[r.k],r.esencial)}" title="${esc(r.t)}: ${esc(tagFor(e.rubros?.[r.k],r.esencial)[1])}"></span></td>`).join("")}
     <td>${av?`<div style="display:flex;align-items:center;gap:6px"><div class="pbar" style="width:60px;height:6px;margin:0"><i style="width:${av.p}%;background:var(--accent)"></i></div><span style="font-family:var(--mono);font-size:12px">${av.d}/${av.t}</span></div>`:`<span style="color:var(--ink3)">—</span>`}</td>
     <td style="font-size:12px;color:var(--ink2);white-space:nowrap">${ult?fmtFecha(ult.fecha):"—"}</td></tr>`; }).join("");
-  $("#v-matriz").innerHTML=`<div class="hwrap"><div><h2>Matriz de estado</h2><p>${arr.length} espacios · clic en una fila para abrir la ficha · clic en un encabezado para ordenar</p></div><button class="btn sm" id="csv">Descargar CSV</button></div>
+  $("#v-matriz").innerHTML=`<div class="hwrap"><div><h2>Matriz de estado</h2><p>${arr.length} espacios · clic en una fila para abrir la ficha · clic en un encabezado para ordenar</p></div><button class="btn sm" id="xlsx">Descargar Excel</button></div>
   <div class="mxleg"><span><i class="cell c-bueno"></i>Bueno</span><span><i class="cell c-regular"></i>Regular</span><span><i class="cell c-malo"></i>Malo</span><span><i class="cell c-falta"></i>No tiene (déficit)</span><span><i class="cell c-no"></i>No tiene (opcional)</span><span><i class="cell c-na"></i>Sin dato</span></div>
   <table class="mx"><thead><tr>${th("nombre","Espacio")}${th("zona","Zona")}${th("puntaje","Estado general")}${th("juegos","Juegos")}${th("mobiliario","Mobiliario")}${th("iluminacion","Ilum.")}${th("veredas","Veredas")}${th("saludable","Est. salud.")}${th("deportivo","Deportivo")}${th("recs","Recomend.")}${th("ult","Últ. registro")}</tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -410,8 +413,29 @@ function descargarCSV(){
     return [e.id,e.nombre,e.tipo,e.zona,e.barrio,e.ubicacion,e.lat??"",e.lng??"",puntaje(e)??"",SEMLAB[sem(puntaje(e))],...RUBROS.map(r=>tagFor(e.rubros?.[r.k],r.esencial)[1]),av?.d??0,av?.t??0].map(q).join(","); }));
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+lines.join("\n")],{type:"text/csv"})); a.download="espacios_publicos_vc.csv"; a.click();
 }
+async function descargarExcel(){
+  try{
+    toast("Generando Excel…");
+    const X=await import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+    const esp=ordenar([...S.espacios.values()]).map(e=>{ const av=avanceRecs(e), p=puntaje(e), u=regsDe(e.id)[0];
+      const o={ID:e.id,Espacio:e.nombre,Tipo:e.tipo||"",Zona:e.zona||"",Barrio:e.barrio||"",Ubicación:e.ubicacion||"",Puntaje:p??"",Semáforo:SEMLAB[sem(p)]};
+      RUBROS.forEach(r=>{ o[r.t]=tagFor(e.rubros?.[r.k],r.esencial)[1]; });
+      Object.assign(o,{"Recomend. cumplidas":av?.d??0,"Recomend. total":av?.t??0,"Último registro":u?.fecha||"",Lat:e.lat??"",Lng:e.lng??""});
+      return o; });
+    const regs=[...S.registros].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(r=>{ const e=S.espacios.get(r.espacio_id);
+      return {Fecha:r.fecha||"",Espacio:e?.nombre||r.espacio_id,Zona:e?.zona||"",Tipo:TIPOS_REG[r.tipo]||r.tipo||"",Rubro:RK[r.rubro]?.t||r.rubro||"",
+        Descripción:r.descripcion||"",Cambios:r.cambios?Object.entries(r.cambios).map(([k,v])=>`${RK[k]?.t||k} → ${v==="no"?"No tiene":v}`).join(" · "):"","Recomendación cumplida":r.rec_hecha||"",
+        Fotos:(r.fotos||[]).map(f=>DB.fotoUrl(f)).join(" "),Autor:r.autor||"",Cargado:r.creado||""}; });
+    const wb=X.utils.book_new();
+    const add=(rows,name)=>{ const ws=X.utils.json_to_sheet(rows.length?rows:[{"(sin datos)":""}]);
+      const keys=Object.keys(rows[0]||{}); ws["!cols"]=keys.map(k=>({wch:Math.min(60,Math.max(k.length,...rows.map(r=>String(r[k]??"").length))+2)}));
+      if(rows.length) ws["!autofilter"]={ref:ws["!ref"]}; X.utils.book_append_sheet(wb,ws,name); };
+    add(esp,"Espacios"); add(regs,"Registros");
+    X.writeFile(wb,`espacios_publicos_vc_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }catch(err){ toast("No se pudo generar el Excel: "+errMsg(err)); }
+}
 $("#v-matriz").addEventListener("click",ev=>{
-  if(ev.target.id==="csv"){ descargarCSV(); return; }
+  if(ev.target.id==="xlsx"){ descargarExcel(); return; }
   const h=ev.target.closest("th[data-k]"); if(h){ const k=h.dataset.k; mxSort=mxSort.k===k?{k,dir:-mxSort.dir}:{k,dir:1}; renderMatriz(); return; }
   const tr=ev.target.closest("tr[data-id]"); if(tr) select(tr.dataset.id); });
 
@@ -419,13 +443,13 @@ $("#v-matriz").addEventListener("click",ev=>{
 function renderBitacora(){
   const vis=new Set(filtrados().map(e=>e.id));
   const regs=S.registros.filter(r=>vis.has(r.espacio_id)).sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))||String(b.creado).localeCompare(String(a.creado)));
-  $("#v-bitacora").innerHTML=`<div class="hwrap"><div><h2>Bitácora general</h2><p>${regs.length} registros de trabajos, relevamientos y reclamos (según filtros activos)</p></div></div>
+  $("#v-bitacora").innerHTML=`<div class="hwrap"><div><h2>Bitácora general</h2><p>${regs.length} registros de trabajos, relevamientos y reclamos (según filtros activos)</p></div><button class="btn sm" id="xlsx2">Descargar Excel</button></div>
   <div class="feed">${regs.length?regs.map(r=>{ const e=S.espacios.get(r.espacio_id), ch=cambiosTxt(r.cambios), ph=fotosHTML(r,90);
     return `<div class="fcard"><div class="h"><a data-id="${esc(r.espacio_id)}">${esc(e?.nombre||"(espacio eliminado)")}</a><span class="tag ${r.tipo==="trabajo"?"t-bueno":r.tipo==="reclamo"?"t-malo":"t-na"}">${esc(TIPOS_REG[r.tipo]||r.tipo)}</span><span>${fmtFecha(r.fecha)}</span>${r.rubro&&RK[r.rubro]?`<span>· ${esc(RK[r.rubro].t)}</span>`:""}${r.autor?`<span>· ${esc(String(r.autor).split("@")[0])}</span>`:""}</div>
     <div class="d">${esc(r.descripcion||"")}</div>${ch?`<div class="h" style="margin-top:4px">${ch}</div>`:""}${r.rec_hecha?`<div class="h" style="margin-top:4px">✓ Recomendación cumplida: ${esc(r.rec_hecha)}</div>`:""}${ph?`<div class="ph">${ph}</div>`:""}</div>`; }).join("")
     :`<div class="fcard empty">Todavía no hay registros. Abrí la ficha de un espacio y usá “Registrar actualización”.</div>`}</div>`;
 }
-$("#v-bitacora").addEventListener("click",ev=>{ const a=ev.target.closest("a[data-id]"); if(a) select(a.dataset.id);
+$("#v-bitacora").addEventListener("click",ev=>{ if(ev.target.id==="xlsx2"){ descargarExcel(); return; } const a=ev.target.closest("a[data-id]"); if(a) select(a.dataset.id);
   if(ev.target.dataset.full){ $("#lbimg").src=ev.target.dataset.full; $("#lightbox").classList.add("open"); } });
 
 /* ---------- vistas ---------- */
@@ -460,6 +484,7 @@ async function reload(){
     finally{ reloading=null; } })();
   return reloading;
 }
+window.VC={map,S,DB,hasPos,renderAll,select,toast,sem,puntaje,SEMCOL,esc,errMsg,filtrados};
 (async function init(){
   $("#titulo").textContent=CFG.TITULO||"Espacios Públicos"; $("#subtitulo").textContent=CFG.SUBTITULO||"";
   const h=(location.hash||"").slice(1); if(["matriz","bitacora"].includes(h)) setView(h);
